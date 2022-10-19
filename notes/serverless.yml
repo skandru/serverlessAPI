@@ -1,0 +1,97 @@
+
+
+service: notes-api
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  lambdaHashingVersion: 20201221
+  stage: dev
+  region: us-west-2
+  
+
+functions:
+  authorizer:
+    handler: authorizer.handler
+    environment:
+      COGNITO_USERPOOL_ID:  !Ref cognitoUserPool
+      CONGNIT_WEB_CLIENT_ID: !Ref cognitoUserPoolWebclient
+  createNote:
+    handler: handler.createNote
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+        Resource: !GetAtt notesTable.Arn
+    environment:
+      NOTES_TABLE_NAME: !Ref notesTable
+    events:
+      - http:
+           method: post
+           path: notes
+           authorizer:
+             name: userpool_authorizer
+             type: COGNITO_USER_POOLS
+             arn: !GetAtt cognitoUserPool.Arn
+  updateNote:
+    handler: handler.updateNote
+    environment:
+      NOTES_TABLE_NAME: !Ref notesTable
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:updateItem
+        Resource: !GetAtt notesTable.Arn
+    events:
+      - http:
+           method: put
+           path: notes/{id}
+           authorizer:
+             name: userpool_authorizer
+             type: COGNITO_USER_POOLS
+             arn: !GetAtt cognitoUserPool.Arn
+  deleteNote:
+    handler: handler.deleteNote
+    environment:
+      NOTES_TABLE_NAME: !Ref notesTable
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:DeleteItem
+        Resource: !GetAtt notesTable.Arn
+    events:
+      - http:
+           method: delete
+           path: notes/{id}
+           authorizer:
+             name: userpool_authorizer
+             type: COGNITO_USER_POOLS
+             arn: !GetAtt cognitoUserPool.Arn
+  getAllNotes:
+    handler: handler.getAllNotes
+    environment:
+      NOTES_TABLE_NAME: !Ref notesTable
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:scan
+        Resource: !GetAtt notesTable.Arn
+    events:
+      - http:
+           method: get
+           path: notes
+           authorizer:
+             name: userpool_authorizer
+             type: COGNITO_USER_POOLS
+             arn: !GetAtt cognitoUserPool.Arn
+
+plugins:
+  - serverless-iam-roles-per-function
+
+resources:
+ Resources:
+   ${file(resources.yml)}
+
+ 
